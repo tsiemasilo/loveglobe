@@ -1,5 +1,7 @@
-import { type MediaFile, type InsertMediaFile, type User, type InsertUser } from "@shared/schema";
+import { type MediaFile, type InsertMediaFile, type User, type InsertUser, users, mediaFiles } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { db } from "./db";
+import { eq, and, sql } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -12,78 +14,68 @@ export interface IStorage {
   getMonthsWithMediaForYear(year: number): Promise<{ month: number; count: number }[]>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-  private mediaFiles: Map<string, MediaFile>;
-
-  constructor() {
-    this.users = new Map();
-    this.mediaFiles = new Map();
-  }
-
+export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id, createdAt: new Date() };
-    this.users.set(id, user);
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
     return user;
   }
 
   async getMediaFilesByYearMonth(year: number, month: number): Promise<MediaFile[]> {
-    return Array.from(this.mediaFiles.values()).filter(
-      (file) => file.year === year && file.month === month
-    );
+    return await db
+      .select()
+      .from(mediaFiles)
+      .where(and(eq(mediaFiles.year, year), eq(mediaFiles.month, month)))
+      .orderBy(mediaFiles.uploadedAt);
   }
 
   async getMediaFile(id: string): Promise<MediaFile | undefined> {
-    return this.mediaFiles.get(id);
+    const [file] = await db.select().from(mediaFiles).where(eq(mediaFiles.id, id));
+    return file || undefined;
   }
 
   async createMediaFile(insertMediaFile: InsertMediaFile): Promise<MediaFile> {
-    const id = randomUUID();
-    const mediaFile: MediaFile = {
-      ...insertMediaFile,
-      id,
-      uploadedAt: new Date(),
-    };
-    this.mediaFiles.set(id, mediaFile);
-    return mediaFile;
+    const [file] = await db
+      .insert(mediaFiles)
+      .values(insertMediaFile)
+      .returning();
+    return file;
   }
 
   async getYearsWithMedia(): Promise<number[]> {
-    const years = new Set<number>();
-    const mediaFilesArray = Array.from(this.mediaFiles.values());
-    for (const file of mediaFilesArray) {
-      years.add(file.year);
-    }
-    return Array.from(years).sort((a, b) => b - a);
+    const result = await db
+      .selectDistinct({ year: mediaFiles.year })
+      .from(mediaFiles)
+      .orderBy(sql`${mediaFiles.year} DESC`);
+    
+    return result.map(row => row.year);
   }
 
   async getMonthsWithMediaForYear(year: number): Promise<{ month: number; count: number }[]> {
-    const monthCounts = new Map<number, number>();
-    const mediaFilesArray = Array.from(this.mediaFiles.values());
+    const result = await db
+      .select({
+        month: mediaFiles.month,
+        count: sql<number>`count(*)::integer`,
+      })
+      .from(mediaFiles)
+      .where(eq(mediaFiles.year, year))
+      .groupBy(mediaFiles.month)
+      .orderBy(mediaFiles.month);
     
-    for (const file of mediaFilesArray) {
-      if (file.year === year) {
-        const currentCount = monthCounts.get(file.month) || 0;
-        monthCounts.set(file.month, currentCount + 1);
-      }
-    }
-    
-    return Array.from(monthCounts.entries()).map(([month, count]) => ({
-      month,
-      count,
-    }));
+    return result;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
