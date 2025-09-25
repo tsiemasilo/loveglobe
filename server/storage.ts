@@ -13,6 +13,7 @@ export interface IStorage {
   createMediaFile(mediaFile: InsertMediaFile): Promise<MediaFile>;
   getYearsWithMedia(): Promise<number[]>;
   getMonthsWithMediaForYear(year: number): Promise<{ month: number; count: number }[]>;
+  getAlbums(): Promise<string[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -90,6 +91,15 @@ export class DatabaseStorage implements IStorage {
       .orderBy(mediaFiles.month);
     
     return result;
+  }
+
+  async getAlbums(): Promise<string[]> {
+    const result = await db
+      .selectDistinct({ name: mediaFiles.albumName })
+      .from(mediaFiles)
+      .orderBy(mediaFiles.albumName);
+    
+    return result.map(row => row.name);
   }
 }
 

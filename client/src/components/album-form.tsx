@@ -21,6 +21,8 @@ type AlbumFormValues = z.infer<typeof albumFormSchema>;
 
 interface AlbumFormProps {
   onSubmit: (albumName: string, year: number, month: number) => void;
+  defaultAlbumName?: string;
+  lockAlbumName?: boolean;
 }
 
 const months = [
@@ -30,11 +32,11 @@ const months = [
 
 const years = Array.from({ length: 9 }, (_, i) => 2017 + i); // 2017-2025
 
-export default function AlbumForm({ onSubmit }: AlbumFormProps) {
+export default function AlbumForm({ onSubmit, defaultAlbumName = "", lockAlbumName = false }: AlbumFormProps) {
   const form = useForm<AlbumFormValues>({
     resolver: zodResolver(albumFormSchema),
     defaultValues: {
-      albumName: "",
+      albumName: defaultAlbumName,
       year: new Date().getFullYear(),
       month: new Date().getMonth(),
     },
@@ -76,6 +78,8 @@ export default function AlbumForm({ onSubmit }: AlbumFormProps) {
                       <Input
                         placeholder="Enter album name (e.g., Vacation, Family Trip)"
                         data-testid="input-album-name"
+                        disabled={lockAlbumName}
+                        readOnly={lockAlbumName}
                         {...field}
                       />
                     </FormControl>

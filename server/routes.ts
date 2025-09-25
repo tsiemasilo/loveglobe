@@ -80,6 +80,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all distinct album names
+  app.get("/api/albums", async (req, res) => {
+    try {
+      const albums = await storage.getAlbums();
+      res.json(albums);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch albums" });
+    }
+  });
+
   // Get months with media count for a specific year
   app.get("/api/years/:year/months", async (req, res) => {
     try {
