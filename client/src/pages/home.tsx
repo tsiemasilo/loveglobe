@@ -6,7 +6,8 @@ import PhotoGallery from "@/components/photo-gallery";
 import MediaModal from "@/components/media-modal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, Plus, FolderOpen } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Camera, Plus, FolderOpen, CheckCircle } from "lucide-react";
 
 interface AlbumSelection {
   albumName: string;
@@ -21,6 +22,7 @@ export default function Home() {
   const [selectedAlbumName, setSelectedAlbumName] = useState<string>("");
   const [albumSelection, setAlbumSelection] = useState<AlbumSelection | null>(null);
   const [modalMedia, setModalMedia] = useState<{ id: string; url: string; alt: string } | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const albumsQuery = useQuery({
     queryKey: ['/api/albums'],
@@ -43,7 +45,19 @@ export default function Home() {
 
   const handleAlbumFormSubmit = (albumName: string, year: number, month: number) => {
     setAlbumSelection({ albumName, year, month });
+    setShowSuccessModal(true);
+  };
+
+  const handleSuccessModalContinue = () => {
+    setShowSuccessModal(false);
     setStep('gallery');
+  };
+
+  const handleSuccessModalGoBack = () => {
+    setShowSuccessModal(false);
+    setStep('choose');
+    setSelectedAlbumName("");
+    setAlbumSelection(null);
   };
 
   const handleBackToChoose = () => {
@@ -225,6 +239,28 @@ export default function Home() {
           onClose={handleCloseModal}
         />
       )}
+
+      <AlertDialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <CheckCircle className="w-8 h-8 text-green-500" />
+              <AlertDialogTitle>Album Created Successfully!</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription>
+              Your album "{albumSelection?.albumName}" has been created. Would you like to start uploading photos now?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleSuccessModalGoBack}>
+              Maybe Later
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleSuccessModalContinue}>
+              Yes, Upload Now
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
