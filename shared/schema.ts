@@ -20,6 +20,7 @@ export const mediaFiles = pgTable("media_files", {
   month: integer("month").notNull(),
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
   filePath: text("file_path").notNull(),
+  albumName: text("album_name").notNull(),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({
