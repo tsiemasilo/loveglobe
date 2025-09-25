@@ -1,37 +1,25 @@
 import { useState } from "react";
 import Header from "@/components/header";
-import YearSelector from "@/components/year-selector";
-import MonthSelector from "@/components/month-selector";
+import AlbumForm from "@/components/album-form";
 import PhotoGallery from "@/components/photo-gallery";
 import MediaModal from "@/components/media-modal";
 
-type View = 'years' | 'months' | 'gallery';
+interface AlbumSelection {
+  albumName: string;
+  year: number;
+  month: number;
+}
 
 export default function Home() {
-  const [currentView, setCurrentView] = useState<View>('years');
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [albumSelection, setAlbumSelection] = useState<AlbumSelection | null>(null);
   const [modalMedia, setModalMedia] = useState<{ id: string; url: string; alt: string } | null>(null);
 
-  const handleYearSelect = (year: number) => {
-    setSelectedYear(year);
-    setCurrentView('months');
+  const handleAlbumFormSubmit = (albumName: string, year: number, month: number) => {
+    setAlbumSelection({ albumName, year, month });
   };
 
-  const handleMonthSelect = (month: number) => {
-    setSelectedMonth(month);
-    setCurrentView('gallery');
-  };
-
-  const handleBackToYears = () => {
-    setCurrentView('years');
-    setSelectedYear(null);
-    setSelectedMonth(null);
-  };
-
-  const handleBackToMonths = () => {
-    setCurrentView('months');
-    setSelectedMonth(null);
+  const handleBackToForm = () => {
+    setAlbumSelection(null);
   };
 
   const handleMediaClick = (media: { id: string; url: string; alt: string }) => {
@@ -44,26 +32,19 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans">
-      <Header onHomeClick={handleBackToYears} />
+      <Header onHomeClick={handleBackToForm} />
       
       <main className="flex-1 py-12">
-        {currentView === 'years' && (
-          <YearSelector onYearSelect={handleYearSelect} />
+        {!albumSelection && (
+          <AlbumForm onSubmit={handleAlbumFormSubmit} />
         )}
         
-        {currentView === 'months' && selectedYear && (
-          <MonthSelector 
-            year={selectedYear}
-            onMonthSelect={handleMonthSelect}
-            onBackClick={handleBackToYears}
-          />
-        )}
-        
-        {currentView === 'gallery' && selectedYear !== null && selectedMonth !== null && (
+        {albumSelection && (
           <PhotoGallery
-            year={selectedYear}
-            month={selectedMonth}
-            onBackClick={handleBackToMonths}
+            albumName={albumSelection.albumName}
+            year={albumSelection.year}
+            month={albumSelection.month}
+            onBackClick={handleBackToForm}
             onMediaClick={handleMediaClick}
           />
         )}

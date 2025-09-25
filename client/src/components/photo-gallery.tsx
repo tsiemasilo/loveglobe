@@ -6,6 +6,7 @@ import UploadZone from "@/components/upload-zone";
 import type { MediaFile } from "@shared/schema";
 
 interface PhotoGalleryProps {
+  albumName: string;
   year: number;
   month: number;
   onBackClick: () => void;
@@ -17,12 +18,13 @@ const months = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-export default function PhotoGallery({ year, month, onBackClick, onMediaClick }: PhotoGalleryProps) {
+export default function PhotoGallery({ albumName, year, month, onBackClick, onMediaClick }: PhotoGalleryProps) {
   const [showUpload, setShowUpload] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: mediaFiles = [], isLoading } = useQuery<MediaFile[]>({
-    queryKey: ['/api/media', year, month],
+    queryKey: ['/api/media', { album: albumName, year, month }],
+    queryFn: () => fetch(`/api/media?album=${encodeURIComponent(albumName)}&year=${year}&month=${month}`).then(res => res.json()),
   });
 
   const uploadMutation = useMutation({
@@ -39,15 +41,14 @@ export default function PhotoGallery({ year, month, onBackClick, onMediaClick }:
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/media', year, month] });
-      queryClient.invalidateQueries({ queryKey: ['/api/years', year, 'months'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/years'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/media', { album: albumName, year, month }] });
       setShowUpload(false);
     },
   });
 
   const handleUpload = (files: FileList) => {
     const formData = new FormData();
+    formData.append('albumName', albumName);
     formData.append('year', year.toString());
     formData.append('month', month.toString());
     
@@ -83,15 +84,15 @@ export default function PhotoGallery({ year, month, onBackClick, onMediaClick }:
         <button 
           onClick={onBackClick}
           className="inline-flex items-center text-primary hover:text-primary/80 transition-colors mb-4"
-          data-testid="back-to-months"
+          data-testid="back-to-album-form"
         >
           <ArrowLeft className="w-5 h-5 mr-2" />
-          Back to Months
+          Back to Album Form
         </button>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-bold mb-2">
-              {months[month]} {year}
+              {albumName} — {months[month]} {year}
             </h2>
             <p className="text-muted-foreground" data-testid="photo-count">
               {mediaFiles.length} photos and videos

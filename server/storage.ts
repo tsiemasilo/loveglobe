@@ -8,6 +8,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   getMediaFilesByYearMonth(year: number, month: number): Promise<MediaFile[]>;
+  getMediaFilesByAlbumYearMonth(albumName: string, year: number, month: number): Promise<MediaFile[]>;
   getMediaFile(id: string): Promise<MediaFile | undefined>;
   createMediaFile(mediaFile: InsertMediaFile): Promise<MediaFile>;
   getYearsWithMedia(): Promise<number[]>;
@@ -38,6 +39,20 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(mediaFiles)
       .where(and(eq(mediaFiles.year, year), eq(mediaFiles.month, month)))
+      .orderBy(mediaFiles.uploadedAt);
+  }
+
+  async getMediaFilesByAlbumYearMonth(albumName: string, year: number, month: number): Promise<MediaFile[]> {
+    return await db
+      .select()
+      .from(mediaFiles)
+      .where(
+        and(
+          eq(mediaFiles.albumName, albumName),
+          eq(mediaFiles.year, year),
+          eq(mediaFiles.month, month)
+        )
+      )
       .orderBy(mediaFiles.uploadedAt);
   }
 

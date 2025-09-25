@@ -18,7 +18,26 @@ const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
       const { year, month } = req.body;
-      const yearMonthDir = path.join(uploadsDir, year, month);
+      
+      // SECURITY: Validate year and month as integers before path construction
+      const yearNum = parseInt(year, 10);
+      const monthNum = parseInt(month, 10);
+      
+      // Reject non-numeric values and invalid ranges
+      if (
+        isNaN(yearNum) || 
+        isNaN(monthNum) || 
+        yearNum < 2017 || 
+        yearNum > 2030 || 
+        monthNum < 0 || 
+        monthNum > 11 ||
+        year !== yearNum.toString() || 
+        month !== monthNum.toString()
+      ) {
+        return cb(new Error('Invalid year or month values'), '');
+      }
+      
+      const yearMonthDir = path.join(uploadsDir, yearNum.toString(), monthNum.toString());
       
       if (!fs.existsSync(yearMonthDir)) {
         fs.mkdirSync(yearMonthDir, { recursive: true });
@@ -93,14 +112,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get media files for a specific album, year, and month using query parameters
+  app.get("/api/media", async (req, res) => {
+    try {
+      const { album, year, month } = req.query;
+      
+      if (!album || !year || !month) {
+        return res.status(400).json({ message: "Album name, year, and month are required" });
+      }
+      
+      const yearNum = parseInt(year as string);
+      const monthNum = parseInt(month as string);
+      
+      if (isNaN(yearNum) || isNaN(monthNum) || monthNum < 0 || monthNum > 11) {
+        return res.status(400).json({ message: "Invalid year or month" });
+      }
+      
+      const mediaFiles = await storage.getMediaFilesByAlbumYearMonth(album as string, yearNum, monthNum);
+      res.json(mediaFiles);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch media files" });
+    }
+  });
+
   // Upload media files
   app.post("/api/upload", upload.array('files'), async (req, res) => {
     try {
-      const { year, month } = req.body;
+      const { year, month, albumName } = req.body;
       const files = req.files as Express.Multer.File[];
       
       if (!files || files.length === 0) {
         return res.status(400).json({ message: "No files uploaded" });
+      }
+      
+      if (!albumName) {
+        return res.status(400).json({ message: "Album name is required" });
       }
       
       const yearNum = parseInt(year);
@@ -121,6 +167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           year: yearNum,
           month: monthNum,
           filePath: file.path,
+          albumName: albumName,
         };
         
         // Validate with schema
